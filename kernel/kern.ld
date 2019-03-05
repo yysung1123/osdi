@@ -50,6 +50,7 @@ SECTIONS
 		*(.data)
 	}
 	.bss : {
+	        PROVIDE(_BSS_START_ = .);
 	        *(.dynbss)
                 *(.bss .bss.*)
 		*(COMMON)
