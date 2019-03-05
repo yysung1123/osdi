@@ -25,7 +25,7 @@
 
 .globl default_trap_handler;
 _alltraps:
-  /* TODO: Since we are going to call default_trap_handler, we have to prepare
+  /*       Since we are going to call default_trap_handler, we have to prepare
    *       the argument for it, which is placed on the stack.
    *       Thus push registers to fillup the Trapframe data structure.
    * 
@@ -37,9 +37,16 @@ _alltraps:
    *       pushing all the general purpose registers into the stack.
 	 */
 
+	push %ds
+	push %es
+	pusha # Pass all registers to PushRegs
 	pushl %esp # Pass a pointer which points to the Trapframe as an argument to default_trap_handler()
 	call default_trap_handler
 
+	add $4, %esp # Cleans up the argument
+	popa
+	pop %es
+	pop %ds
 	add $8, %esp # Cleans up the pushed error code and pushed ISR number
 	iret # pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP!
 
