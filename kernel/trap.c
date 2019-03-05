@@ -8,13 +8,15 @@
  */
 static struct Trapframe *last_tf;
 
-/* TODO: You should declare an interrupt descriptor table.
+/*       You should declare an interrupt descriptor table.
  *       In x86, there are at most 256 it.
  *
  * Note: You can leverage the Gatedesc data structure inside mmu.h
  *       Interrupt descriptor table must be built at run time because shifted
  *       function addresses can't be represented in relocation records.
  */
+struct Gatedesc idt[256];
+struct Pseudodesc idt_pd = {(256 - 1) * 8, (uint32_t)idt};
 
 
 /* For debugging */
@@ -162,6 +164,7 @@ void trap_init()
 
 	/* Keyboard interrupt setup */
 	/* Timer Trap setup */
-  /* Load IDT */
+    /* Load IDT */
+    lidt(&idt_pd);
 
 }
