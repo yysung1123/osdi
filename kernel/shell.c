@@ -11,9 +11,10 @@ struct Command {
 };
 
 static struct Command commands[] = {
-	{ "help", "Display this list of commands", mon_help },
-	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "print_tick", "Display system tick", print_tick }
+        { "help", "Display this list of commands", mon_help },
+        { "kerninfo", "Display information about the kernel", mon_kerninfo },
+        { "print_tick", "Display system tick", print_tick },
+        { "chgcolor", "Change the text color", chgcolor }
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -47,6 +48,20 @@ int mon_kerninfo(int argc, char **argv)
 int print_tick(int argc, char **argv)
 {
 	cprintf("Now tick = %d\n", get_tick());
+}
+
+extern void settextcolor(unsigned char forecolor, unsigned char backcolor);
+
+int chgcolor(int argc, char **argv) {
+    if (argc < 2) {
+        cprintf("No input text color!\n");
+        return 0;
+    }
+
+    int color = argv[1][0] - '0';
+    settextcolor(color, 0);
+    cprintf("Change color %d!\n", color);
+    return 0;
 }
 
 #define WHITESPACE "\t\r\n "
