@@ -17,11 +17,13 @@
 
 .text
 
-/* TODO: Interface declaration for ISRs
+/*       Interface declaration for ISRs
  * Note: Use TRAPHANDLER_NOEC macro define other isr enrty
  *       The Trap number are declared in inc/trap.h which might come in handy
  *       when declaring interface for ISRs.
  */
+TRAPHANDLER_NOEC(timer_interrupt, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(keyboard_interrupt, IRQ_OFFSET + IRQ_KBD)
 
 .globl default_trap_handler;
 _alltraps:
