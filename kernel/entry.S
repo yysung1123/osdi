@@ -60,6 +60,7 @@ kgdtdesc:
 .bss
 	# There is kernel initial stack
 	.globl		bootstack
+.p2align 12
 bootstack:
 	.space		KSTKSIZE
 	.globl		bootstacktop   

@@ -184,7 +184,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-    /* TODO */
+    boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), (PTE_W | PTE_P));
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -194,7 +194,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-    /* TODO */
+    boot_map_region(kern_pgdir, KERNBASE, ROUNDUP((0xffffffff - KERNBASE), PGSIZE), 0, (PTE_W | PTE_P));
 
 	//////////////////////////////////////////////////////////////////////
 	// Map VA range [IOPHYSMEM, EXTPHYSMEM) to PA range [IOPHYSMEM, EXTPHYSMEM)
@@ -384,7 +384,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-    /* TODO */
+    for (int i = 0; i < size; i += PGSIZE) {
+        pte_t *pte = pgdir_walk(pgdir, va + i, 1);
+        *pte = (pa + i) | perm | PTE_P;
+    }
 }
 
 //
