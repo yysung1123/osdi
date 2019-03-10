@@ -2,19 +2,24 @@
 #include <inc/mmu.h>
 #include <inc/x86.h>
 
+extern void keyboard_interrupt(void);
+extern void timer_interrupt(void);
+
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
  * additional information in the latter case.
  */
 static struct Trapframe *last_tf;
 
-/* TODO: You should declare an interrupt descriptor table.
+/*       You should declare an interrupt descriptor table.
  *       In x86, there are at most 256 it.
  *
  * Note: You can leverage the Gatedesc data structure inside mmu.h
  *       Interrupt descriptor table must be built at run time because shifted
  *       function addresses can't be represented in relocation records.
  */
+struct Gatedesc idt[256];
+struct Pseudodesc idt_pd = {(256 - 1) * 8, (uint32_t)idt};
 
 
 /* For debugging */
@@ -100,10 +105,13 @@ print_regs(struct PushRegs *regs)
 	cprintf("  eax  0x%08x\n", regs->reg_eax);
 }
 
+extern void timer_handler();
+extern void kbd_intr(void);
+
 static void
 trap_dispatch(struct Trapframe *tf)
 {
-  /* TODO: Handle specific interrupts.
+  /*       Handle specific interrupts.
    *       You need to check the interrupt number in order to tell
    *       which interrupt is currently happening since every interrupt
    *       comes to this function called by default_trap_handler.
@@ -117,6 +125,14 @@ trap_dispatch(struct Trapframe *tf)
    *       We prepared the keyboard handler and timer handler for you
    *       already. Please reference in kernel/kbd.c and kernel/timer.c
    */
+    switch (tf->tf_trapno) {
+    case IRQ_OFFSET + IRQ_TIMER:
+        timer_handler();
+        return;
+    case IRQ_OFFSET + IRQ_KBD:
+        kbd_intr();
+        return;
+    }
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
@@ -138,7 +154,7 @@ void default_trap_handler(struct Trapframe *tf)
 
 void trap_init()
 {
-  /* TODO: You should initialize the interrupt descriptor table.
+  /*       You should initialize the interrupt descriptor table.
    *       You should setup at least keyboard interrupt and timer interrupt as
    *       the lab's requirement.
    *
@@ -160,8 +176,11 @@ void trap_init()
    *       come in handy for you when filling up the argument of "lidt"
    */
 
-	/* Keyboard interrupt setup */
-	/* Timer Trap setup */
-  /* Load IDT */
+    /* Keyboard interrupt setup */
+    SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, keyboard_interrupt, 0)
+    /* Timer Trap setup */
+    SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, timer_interrupt, 0)
+    /* Load IDT */
+    lidt(&idt_pd);
 
 }

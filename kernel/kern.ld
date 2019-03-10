@@ -9,11 +9,14 @@ kernel_load_addr = 0xF0100000;
 SECTIONS
 {
 	. = kernel_load_addr;
+	PROVIDE(_FOOTPRINT_START_ = .);
 
 	/* AT(...) gives the load address of this section, which tells
 	   the boot loader where to load the kernel in physical memory */
 	.text : AT(0x100000) {
+		PROVIDE(_TEXT_START_ = .);
 		*(.text .stub .text.* .gnu.linkonce.t.*)
+		PROVIDE(_TEXT_END_ = .);
 	}
 	PROVIDE(etext = .);	/* Define the 'etext' symbol to this value */
 
@@ -43,14 +46,20 @@ SECTIONS
 
 	/* The data segment */
 	.data : {
+	        PROVIDE(_DATA_START_ = .);
 		*(.data)
 	}
 	.bss : {
-		*(.bss)
+	        PROVIDE(_BSS_START_ = .);
+	        *(.dynbss)
+                *(.bss .bss.*)
+		*(COMMON)
+	        PROVIDE(_DATA_END_ = .);
+	        PROVIDE(end = .);
 	}
-	PROVIDE(end = .);
 
 	/DISCARD/ : {
 		*(.eh_frame .note.GNU-stack)
 	}
+	PROVIDE(_FOOTPRINT_END_ = .);
 }

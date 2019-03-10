@@ -222,8 +222,8 @@ void kbd_init(void)
 	// Drain the kbd buffer so that Bochs generates interrupts.
     cons.rpos = 0;
     cons.wpos = 0;
-	kbd_intr();
-	irq_setmask_8259A(irq_mask_8259A & ~(1<<IRQ_KBD));
+    kbd_intr();
+    irq_setmask_8259A(irq_mask_8259A & ~(1<<IRQ_KBD));
 }
 
 /* high-level console I/O */

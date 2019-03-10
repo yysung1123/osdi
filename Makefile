@@ -5,8 +5,9 @@ LD	=ld
 OBJCOPY = objcopy
 OBJDUMP = objdump
 NM = nm
+QEMU = qemu-system-i386
 
-CFLAGS = -m32 -Wall -O -fstrength-reduce -fomit-frame-pointer -finline-functions -nostdinc -fno-builtin 
+CFLAGS = -m32 -Wall -O -fstrength-reduce -finline-functions -nostdinc -fno-builtin -fno-stack-protector
 
 # Add debug symbol
 CFLAGS += -g
@@ -14,6 +15,8 @@ CFLAGS += -g
 CFLAGS += -I.
 
 OBJDIR = .
+
+LDFLAGS= -m elf_i386
 
 
 include boot/Makefile
@@ -25,6 +28,9 @@ all: boot/boot kernel/system
 	dd if=$(OBJDIR)/kernel/system of=$(OBJDIR)/kernel.img seek=1 conv=notrunc 2>/dev/null
 
 clean:
-	rm $(OBJDIR)/boot/*.o $(OBJDIR)/boot/boot.out $(OBJDIR)/boot/boot $(OBJDIR)/boot/boot.asm
-	rm $(OBJDIR)/kernel/*.o $(OBJDIR)/kernel/system* kernel.*
-	rm $(OBJDIR)/lib/*.o
+	rm -f $(OBJDIR)/boot/*.o $(OBJDIR)/boot/boot.out $(OBJDIR)/boot/boot $(OBJDIR)/boot/boot.asm
+	rm -f $(OBJDIR)/kernel/*.o $(OBJDIR)/kernel/system* kernel.*
+	rm -f $(OBJDIR)/lib/*.o
+
+debug: all
+	$(QEMU) -hda kernel.img -s -S -monitor stdio

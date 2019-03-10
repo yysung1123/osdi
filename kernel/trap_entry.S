@@ -17,15 +17,17 @@
 
 .text
 
-/* TODO: Interface declaration for ISRs
+/*       Interface declaration for ISRs
  * Note: Use TRAPHANDLER_NOEC macro define other isr enrty
  *       The Trap number are declared in inc/trap.h which might come in handy
  *       when declaring interface for ISRs.
  */
+TRAPHANDLER_NOEC(timer_interrupt, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(keyboard_interrupt, IRQ_OFFSET + IRQ_KBD)
 
 .globl default_trap_handler;
 _alltraps:
-  /* TODO: Since we are going to call default_trap_handler, we have to prepare
+  /*       Since we are going to call default_trap_handler, we have to prepare
    *       the argument for it, which is placed on the stack.
    *       Thus push registers to fillup the Trapframe data structure.
    * 
@@ -37,9 +39,16 @@ _alltraps:
    *       pushing all the general purpose registers into the stack.
 	 */
 
+	push %ds
+	push %es
+	pusha # Pass all registers to PushRegs
 	pushl %esp # Pass a pointer which points to the Trapframe as an argument to default_trap_handler()
 	call default_trap_handler
 
+	add $4, %esp # Cleans up the argument
+	popa
+	pop %es
+	pop %ds
 	add $8, %esp # Cleans up the pushed error code and pushed ISR number
 	iret # pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP!
 
