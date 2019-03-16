@@ -1,9 +1,11 @@
 #include <kernel/trap.h>
+#include <inc/assert.h>
 #include <inc/mmu.h>
 #include <inc/x86.h>
 
 extern void keyboard_interrupt(void);
 extern void timer_interrupt(void);
+extern void page_fault(void);
 
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
@@ -126,6 +128,9 @@ trap_dispatch(struct Trapframe *tf)
    *       already. Please reference in kernel/kbd.c and kernel/timer.c
    */
     switch (tf->tf_trapno) {
+    case T_PGFLT:
+        print_trapframe(tf);
+        panic("");
     case IRQ_OFFSET + IRQ_TIMER:
         timer_handler();
         return;
@@ -180,6 +185,7 @@ void trap_init()
     SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, keyboard_interrupt, 0)
     /* Timer Trap setup */
     SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, timer_interrupt, 0)
+    SETGATE(idt[T_PGFLT], 0, GD_KT, page_fault, 0)
     /* Load IDT */
     lidt(&idt_pd);
 
