@@ -5,8 +5,9 @@ LD	=ld
 OBJCOPY = objcopy
 OBJDUMP = objdump
 NM = nm
+QEMU = qemu-system-i386
 
-CFLAGS = -m32 -Wall -O -fstrength-reduce -fomit-frame-pointer -finline-functions -nostdinc -fno-builtin 
+CFLAGS = -m32 -Wall -O -fstrength-reduce -finline-functions -nostdinc -fno-builtin -fno-stack-protector
 
 # Add debug symbol
 CFLAGS += -g
@@ -14,6 +15,8 @@ CFLAGS += -g
 CFLAGS += -I.
 
 OBJDIR = .
+
+LDFLAGS= -m elf_i386
 
 
 include boot/Makefile
@@ -32,7 +35,7 @@ clean:
 	rm -rf $(OBJDIR)/user/*.asm
 
 qemu:
-	qemu-system-i386 -hda kernel.img -monitor stdio
+	$(QEMU) -hda kernel.img -monitor stdio
 
 debug:
-	qemu-system-i386 -hda kernel.img -monitor stdio -s -S
+	$(QEMU) -hda kernel.img -monitor stdio -s -S
