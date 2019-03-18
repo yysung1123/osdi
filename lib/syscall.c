@@ -54,3 +54,4 @@ puts(const char *s, size_t len)
  *
  * HINT: You can use SYSCALL_NOARG to save your time.
  */
+SYSCALL_NOARG(cls, int32_t)
