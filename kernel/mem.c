@@ -521,7 +521,7 @@ setupvm(pde_t *pgdir, uint32_t start, uint32_t size)
 }
 
 
-/* TODO: Lab 5
+/*
  * Set up kernel part of a page table.
  * You should map the kernel part memory with appropriate permission
  * Return a pointer to newly created page directory
@@ -529,6 +529,16 @@ setupvm(pde_t *pgdir, uint32_t start, uint32_t size)
 pde_t *
 setupkvm()
 {
+    struct PageInfo *pp = page_alloc(ALLOC_ZERO);
+    if (!pp) {
+        return NULL;
+    }
+
+    pde_t *pgdir = page2kva(pp);
+    boot_map_region(pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), (PTE_W | PTE_P));
+    boot_map_region(pgdir, KERNBASE, ROUNDUP((0xffffffff - KERNBASE), PGSIZE), 0, (PTE_W | PTE_P));
+    boot_map_region(pgdir, IOPHYSMEM, ROUNDUP((EXTPHYSMEM - IOPHYSMEM), PGSIZE), IOPHYSMEM, (PTE_W | PTE_P));
+    return pgdir;
 }
 
 
