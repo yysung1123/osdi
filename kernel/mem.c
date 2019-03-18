@@ -270,6 +270,7 @@ page_init(void)
             pages[i].pp_ref = 0;
             pages[i].pp_link = page_free_list;
             page_free_list = &pages[i];
+            num_free_pages++;
         }
     }
 }
@@ -294,6 +295,7 @@ page_alloc(int alloc_flags)
     struct PageInfo *pp = page_free_list;
     page_free_list = pp->pp_link;
     pp->pp_link = NULL;
+    num_free_pages--;
 
     if (alloc_flags & ALLOC_ZERO) {
         memset(page2kva(pp), 0, PGSIZE);
@@ -316,6 +318,7 @@ page_free(struct PageInfo *pp)
 
     pp->pp_link = page_free_list;
     page_free_list = pp;
+    num_free_pages++;
 }
 
 //
@@ -542,7 +545,7 @@ setupkvm()
 }
 
 
-/* TODO: Lab 5
+/*
  * Please maintain num_free_pages yourself
  */
 /* This is the system call implementation of get_num_free_page */

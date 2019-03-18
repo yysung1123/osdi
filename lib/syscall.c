@@ -60,4 +60,6 @@ void settextcolor(unsigned char forecolor, unsigned char backcolor) {
 
 SYSCALL_NOARG(cls, int32_t)
 
+SYSCALL_NOARG(get_num_free_page, int32_t);
+
 SYSCALL_NOARG(get_ticks, unsigned long)
