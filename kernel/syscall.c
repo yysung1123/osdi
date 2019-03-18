@@ -74,7 +74,7 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
     break;
 
   case SYS_get_ticks:
-		/* TODO: Lab 5
+		/*
      * You can reference kernel/timer.c
      */
     retVal = sys_get_ticks();
