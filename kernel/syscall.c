@@ -42,9 +42,10 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
 		break;
 
 	case SYS_getpid:
-		/* TODO: Lab 5
+		/*
      * Get current task's pid
      */
+        retVal = cur_task->task_id;
 		break;
 
 	case SYS_sleep:

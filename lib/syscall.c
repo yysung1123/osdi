@@ -58,6 +58,8 @@ void settextcolor(unsigned char forecolor, unsigned char backcolor) {
     syscall(SYS_settextcolor, (int)forecolor, (int)backcolor, 0, 0, 0);
 }
 
+SYSCALL_NOARG(getpid, int32_t)
+
 SYSCALL_NOARG(cls, int32_t)
 
 SYSCALL_NOARG(get_num_free_page, int32_t);
