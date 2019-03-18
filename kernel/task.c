@@ -70,7 +70,7 @@ Task *cur_task = NULL; //Current running task
 extern void sched_yield(void);
 
 
-/* TODO: Lab5
+/*
  * 1. Find a free task structure for the new task,
  *    the global task list is in the array "tasks".
  *    You should find task that is in the state "TASK_FREE"
@@ -100,12 +100,25 @@ int task_create()
 	Task *ts = NULL;
 
 	/* Find a free task structure */
+    int pid;
+    for (pid = 0; pid < NR_TASKS; pid++) {
+        if (tasks[pid].state == TASK_FREE) {
+            ts = &tasks[pid];
+            break;
+        }
+    }
+
+    if (!ts) return -1;
 
   /* Setup Page Directory and pages for kernel*/
   if (!(ts->pgdir = setupkvm()))
     panic("Not enough memory for per process page directory!\n");
 
   /* Setup User Stack */
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        struct PageInfo *pp = page_alloc(0);
+        page_insert(ts->pgdir, pp, USTACKTOP - USR_STACK_SIZE + i, (PTE_U | PTE_W | PTE_P));
+    }
 
 	/* Setup Trapframe */
 	memset( &(ts->tf), 0, sizeof(ts->tf));
@@ -117,6 +130,12 @@ int task_create()
 	ts->tf.tf_esp = USTACKTOP-PGSIZE;
 
 	/* Setup task structure (task_id and parent_id) */
+    ts->task_id = pid;
+    ts->state = TASK_RUNNABLE;
+    ts->parent_id = (cur_task ? cur_task->task_id : 0);
+    ts->remind_ticks = TIME_QUANT;
+
+    return pid;
 }
 
 
@@ -192,7 +211,7 @@ int sys_fork()
 	}
 }
 
-/* TODO: Lab5
+/*
  * We've done the initialization for you,
  * please make sure you understand the code.
  */
