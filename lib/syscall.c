@@ -62,4 +62,6 @@ SYSCALL_NOARG(cls, int32_t)
 
 SYSCALL_NOARG(get_num_free_page, int32_t);
 
+SYSCALL_NOARG(get_num_used_page, int32_t);
+
 SYSCALL_NOARG(get_ticks, unsigned long)
