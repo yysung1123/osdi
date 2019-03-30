@@ -129,8 +129,8 @@ trap_dispatch(struct Trapframe *tf)
    */
     switch (tf->tf_trapno) {
     case T_PGFLT:
-        print_trapframe(tf);
-        panic("");
+        cprintf("[0410750] Page fault @ %p\n", rcr2());
+        while (1) {}
     case IRQ_OFFSET + IRQ_TIMER:
         timer_handler();
         return;
