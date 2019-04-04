@@ -29,19 +29,33 @@ void timer_handler(struct Trapframe *tf)
 
   extern Task *cur_task;
 
-  if (cur_task != NULL)
-  {
-  /* TODO: Lab 5
-   * 1. Maintain the status of slept tasks
-   * 
-   * 2. Change the state of the task if needed
-   *
-   * 3. Maintain the time quantum of the current task
-   *
-   * 4. sched_yield() if the time is up for current task
-   *
-   */
-  }
+    if (cur_task != NULL)
+    {
+    /*
+    * 1. Maintain the status of slept tasks
+    *
+    * 2. Change the state of the task if needed
+    *
+    * 3. Maintain the time quantum of the current task
+    *
+    * 4. sched_yield() if the time is up for current task
+    *
+    */
+        for (int pid = 0; pid < NR_TASKS; pid++) {
+            if (tasks[pid].state == TASK_SLEEP) {
+                if (--tasks[pid].remind_ticks == 0) {
+                    tasks[pid].state = TASK_RUNNABLE;
+                    tasks[pid].remind_ticks = TIME_QUANT;
+                }
+            }
+        }
+
+        if (--cur_task->remind_ticks == 0) {
+            cur_task->state = TASK_RUNNABLE;
+            cur_task->remind_ticks = TIME_QUANT;
+            sched_yield();
+        }
+    }
 }
 
 unsigned long sys_get_ticks()

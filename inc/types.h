@@ -29,6 +29,7 @@ typedef unsigned long long uint64_t;
 typedef int32_t intptr_t;
 typedef uint32_t uintptr_t;
 typedef uint32_t physaddr_t;
+typedef uint32_t kernaddr_t;
 
 // Page numbers are 32 bits long.
 typedef uint32_t ppn_t;

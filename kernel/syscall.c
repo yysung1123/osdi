@@ -27,9 +27,10 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
 	switch (syscallno)
 	{
 	case SYS_fork:
-		/* TODO: Lab 5
+		/*
      * You can reference kernel/task.c, kernel/task.h
      */
+        retVal = sys_fork();
 		break;
 
 	case SYS_getc:
@@ -49,17 +50,22 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
 		break;
 
 	case SYS_sleep:
-		/* TODO: Lab 5
+		/*
      * Yield this task
      * You can reference kernel/sched.c for yielding the task
      */
+        cur_task->state = TASK_SLEEP;
+        cur_task->remind_ticks = a1;
+        extern void sched_yield();
+        sched_yield();
 		break;
 
 	case SYS_kill:
-		/* TODO: Lab 5
+		/*
      * Kill specific task
      * You can reference kernel/task.c, kernel/task.h
      */
+        sys_kill(a1);
 		break;
 
   case SYS_get_num_free_page:

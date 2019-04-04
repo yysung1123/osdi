@@ -32,9 +32,11 @@ typedef struct
 void task_init();
 void env_pop_tf(struct Trapframe *tf);
 
-/* TODO Lab 5
+/*
  * Interface for real implementation of kill and fork
  * Since their real implementation should be in kernel/task.c
  */
+void sys_kill(int pid);
+int sys_fork();
 
 #endif

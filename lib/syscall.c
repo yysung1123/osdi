@@ -45,7 +45,7 @@ puts(const char *s, size_t len)
 	syscall(SYS_puts,(uint32_t)s, len, 0, 0, 0);
 }
 
-/* TODO: Lab 5
+/*
  * Please add interface needed for 
  * sleep, settextcolor, kill_self, fork, getpid, cls, get_num_free_page,
  * and get_num_used_page
@@ -54,9 +54,19 @@ puts(const char *s, size_t len)
  *
  * HINT: You can use SYSCALL_NOARG to save your time.
  */
+void sleep(uint32_t ticks) {
+    syscall(SYS_sleep, ticks, 0, 0, 0, 0);
+}
+
 void settextcolor(unsigned char forecolor, unsigned char backcolor) {
     syscall(SYS_settextcolor, (int)forecolor, (int)backcolor, 0, 0, 0);
 }
+
+void kill_self() {
+    syscall(SYS_kill, getpid(), 0, 0, 0, 0);
+}
+
+SYSCALL_NOARG(fork, int32_t)
 
 SYSCALL_NOARG(getpid, int32_t)
 

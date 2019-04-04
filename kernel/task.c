@@ -139,7 +139,7 @@ int task_create()
 }
 
 
-/* TODO: Lab5
+/*
  * This function free the memory allocated by kernel.
  *
  * 1. Be sure to change the page directory to kernel's page
@@ -158,21 +158,30 @@ int task_create()
  */
 static void task_free(int pid)
 {
+        lcr3(PADDR(kern_pgdir));
+        for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+            page_remove(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i);
+        }
+        ptable_remove(tasks[pid].pgdir);
+        pgdir_remove(tasks[pid].pgdir);
 }
 
 void sys_kill(int pid)
 {
 	if (pid > 0 && pid < NR_TASKS)
 	{
-	/* TODO: Lab 5
+	/*
    * Remember to change the state of tasks
    * Free the memory
    * and invoke the scheduler for yield
    */
+        tasks[pid].state = TASK_FREE;
+        task_free(pid);
+        sched_yield();
 	}
 }
 
-/* TODO: Lab 5
+/*
  * In this function, you have several things todo
  *
  * 1. Use task_create() to create an empty task, return -1
@@ -200,6 +209,28 @@ int sys_fork()
 {
   /* pid for newly created process */
   int pid;
+
+    /* Step 1: Use task_create() to create an empty task */
+    pid = task_create();
+    if (pid == -1) return -1;
+
+    /* Step 2: Copy the trap frame of the parent to the child */
+    tasks[pid].tf = cur_task->tf;
+
+    /* Step 3: Copy the content of the old stack to the new one */
+    extern pde_t *kern_pgdir;
+    lcr3(PADDR(kern_pgdir));
+
+    extern struct PageInfo* page_lookup();
+    extern void* page2kva();
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        kernaddr_t *src = page2kva(page_lookup(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        kernaddr_t *dest = page2kva(page_lookup(cur_task->pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        memcpy(src, dest, PGSIZE);
+    }
+
+    lcr3(PADDR(cur_task->pgdir));
+
 	if ((uint32_t)cur_task)
 	{
     /* Step 4: All user program use the same code for now */
@@ -209,6 +240,10 @@ int sys_fork()
     setupvm(tasks[pid].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
 
 	}
+
+	/* Step 5 */
+	tasks[pid].tf.tf_regs.reg_eax = 0;
+	return pid;
 }
 
 /*
