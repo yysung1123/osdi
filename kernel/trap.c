@@ -5,6 +5,7 @@
 #include <inc/mmu.h>
 #include <inc/x86.h>
 
+
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
  * additional information in the latter case.
@@ -130,6 +131,7 @@ env_pop_tf(struct Trapframe *tf)
 		: : "g" (tf) : "memory");
 	panic("iret failed");  /* mostly to placate the compiler */
 }
+
 
 static void
 trap_dispatch(struct Trapframe *tf)

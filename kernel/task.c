@@ -71,7 +71,7 @@ Task *cur_task = NULL; //Current running task
 extern void sched_yield(void);
 
 
-/* TODO: Lab5
+/*
  * 1. Find a free task structure for the new task,
  *    the global task list is in the array "tasks".
  *    You should find task that is in the state "TASK_FREE"
@@ -101,12 +101,25 @@ int task_create()
 	Task *ts = NULL;
 
 	/* Find a free task structure */
+    int pid;
+    for (pid = 0; pid < NR_TASKS; pid++) {
+        if (tasks[pid].state == TASK_FREE) {
+            ts = &tasks[pid];
+            break;
+        }
+    }
+
+    if (!ts) return -1;
 
   /* Setup Page Directory and pages for kernel*/
   if (!(ts->pgdir = setupkvm()))
     panic("Not enough memory for per process page directory!\n");
 
   /* Setup User Stack */
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        struct PageInfo *pp = page_alloc(0);
+        page_insert(ts->pgdir, pp, USTACKTOP - USR_STACK_SIZE + i, (PTE_U | PTE_W | PTE_P));
+    }
 
 	/* Setup Trapframe */
 	memset( &(ts->tf), 0, sizeof(ts->tf));
@@ -118,10 +131,16 @@ int task_create()
 	ts->tf.tf_esp = USTACKTOP-PGSIZE;
 
 	/* Setup task structure (task_id and parent_id) */
+    ts->task_id = pid;
+    ts->state = TASK_RUNNABLE;
+    ts->parent_id = (cur_task ? cur_task->task_id : 0);
+    ts->remind_ticks = TIME_QUANT;
+
+    return pid;
 }
 
 
-/* TODO: Lab5
+/*
  * This function free the memory allocated by kernel.
  *
  * 1. Be sure to change the page directory to kernel's page
@@ -142,6 +161,12 @@ int task_create()
 
 static void task_free(int pid)
 {
+        lcr3(PADDR(kern_pgdir));
+        for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+            page_remove(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i);
+        }
+        ptable_remove(tasks[pid].pgdir);
+        pgdir_remove(tasks[pid].pgdir);
 }
 
 // Lab6 TODO
@@ -154,15 +179,18 @@ void sys_kill(int pid)
 {
 	if (pid > 0 && pid < NR_TASKS)
 	{
-	/* TODO: Lab 5
+	/*
    * Remember to change the state of tasks
    * Free the memory
    * and invoke the scheduler for yield
    */
+        tasks[pid].state = TASK_FREE;
+        task_free(pid);
+        sched_yield();
 	}
 }
 
-/* TODO: Lab 5
+/*
  * In this function, you have several things todo
  *
  * 1. Use task_create() to create an empty task, return -1
@@ -197,6 +225,28 @@ int sys_fork()
 {
   /* pid for newly created process */
   int pid;
+
+    /* Step 1: Use task_create() to create an empty task */
+    pid = task_create();
+    if (pid == -1) return -1;
+
+    /* Step 2: Copy the trap frame of the parent to the child */
+    tasks[pid].tf = cur_task->tf;
+
+    /* Step 3: Copy the content of the old stack to the new one */
+    extern pde_t *kern_pgdir;
+    lcr3(PADDR(kern_pgdir));
+
+    extern struct PageInfo* page_lookup();
+    extern void* page2kva();
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        kernaddr_t *src = page2kva(page_lookup(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        kernaddr_t *dest = page2kva(page_lookup(cur_task->pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        memcpy(src, dest, PGSIZE);
+    }
+
+    lcr3(PADDR(cur_task->pgdir));
+
 	if ((uint32_t)cur_task)
 	{
     /* Step 4: All user program use the same code for now */
@@ -206,9 +256,13 @@ int sys_fork()
     setupvm(tasks[pid].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
 
 	}
+
+	/* Step 5 */
+	tasks[pid].tf.tf_regs.reg_eax = 0;
+	return pid;
 }
 
-/* TODO: Lab5
+/*
  * We've done the initialization for you,
  * please make sure you understand the code.
  */

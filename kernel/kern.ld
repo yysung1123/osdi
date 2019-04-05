@@ -24,7 +24,7 @@ PROVIDE(stext = .);
   lib/syscall.o (.text)
   user/shell.o (.text)
   user/main.o (.text)
-  /usr/lib/gcc/i686-redhat-linux/4.5.1/libgcc.a (.*)
+  /usr/lib/gcc/x86_64-pc-linux-gnu/8.2.1/32/libgcc.a (.*)
   PROVIDE(UTEXT_end = .);
   *(.text .stub .text.* .gnu.linkonce.t.*)
 }
@@ -43,6 +43,7 @@ PROVIDE(URODATA_start = .);
   user/main.o (.rodata)
 PROVIDE(URODATA_end = .);
   *(.rodata .rodata.* .gnu.linkonce.r.*)
+  *(.data.rel.ro.local)
 }
 PROVIDE(rdata_end = .);
 
@@ -70,29 +71,32 @@ PROVIDE(rdata_end = .);
 PROVIDE(data_start = .);
 .data : {
 PROVIDE(UDATA_start = .);
-  lib/string.o (.data)
-  lib/printf.o (.data)
-  lib/printfmt.o (.data)
-  lib/readline.o (.data)
-  lib/console.o (.data)
-  lib/syscall.o (.data)
-  user/shell.o (.data)
-  user/main.o (.data)
+  lib/string.o (.data .data.*)
+  lib/printf.o (.data .data.*)
+  lib/printfmt.o (.data .data.*)
+  lib/readline.o (.data .data.*)
+  lib/console.o (.data .data.*)
+  lib/syscall.o (.data .data.*)
+  user/shell.o (.data .data.*)
+  user/main.o (.data .data.*)
 PROVIDE(UDATA_end = .);
   *(.data)
+  *(.data.rel.local)
 }
 PROVIDE(bss_start = .);
 .bss : {
 PROVIDE(UBSS_start = .);
-  lib/string.o (.bss)
-  lib/printf.o (.bss)
-  lib/printfmt.o (.bss)
-  lib/readline.o (.bss)
-  lib/console.o (.bss)
-  lib/syscall.o (.bss)
-  user/shell.o (.bss)
-  user/main.o (.bss)
-  *(.bss)
+  lib/string.o (.bss .bss.*)
+  lib/printf.o (.bss .bss.*)
+  lib/printfmt.o (.bss .bss.*)
+  lib/readline.o (.bss .bss.*)
+  lib/console.o (.bss .bss.*)
+  lib/syscall.o (.bss .bss.*)
+  user/shell.o (.bss .bss.*)
+  user/main.o (.bss .bss.*)
+  *(.dynbss)
+  *(.bss .bss.*)
+  *(COMMON)
 }
 PROVIDE(UBSS_end = .);
 PROVIDE(end = .);

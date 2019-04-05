@@ -5,7 +5,7 @@
 #define ctx_switch(ts) \
   do { env_pop_tf(&((ts)->tf)); } while(0)
 
-/* TODO: Lab5
+/*
 * Implement a simple round-robin scheduler (Start with the next one)
 *
 * 1. You have to remember the task you picked last time.
@@ -44,4 +44,14 @@ void sched_yield(void)
 {
 	extern Task tasks[];
 	extern Task *cur_task;
+
+	int cur_pid = cur_task->task_id;
+	do {
+	    cur_pid = (cur_pid + 1) % NR_TASKS;
+    } while (tasks[cur_pid].state != TASK_RUNNABLE);
+
+    cur_task = &tasks[cur_pid];
+    cur_task->state = TASK_RUNNING;
+    lcr3(PADDR(cur_task->pgdir));
+    ctx_switch(cur_task);
 }
