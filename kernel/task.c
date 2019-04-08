@@ -179,7 +179,7 @@ static void task_free(int pid)
         pgdir_remove(tasks[pid].pgdir);
 }
 
-// Lab6 TODO
+// Lab6
 //
 // Modify it so that the task will be removed form cpu runqueue
 // ( we not implement signal yet so do not try to kill process
@@ -194,8 +194,10 @@ void sys_kill(int pid)
    * Free the memory
    * and invoke the scheduler for yield
    */
+        runqueue_remove_task(&thiscpu->cpu_rq, pid);
         tasks[pid].state = TASK_FREE;
         task_free(pid);
+        thiscpu->cpu_rq.cur_task = 0;
         sched_yield();
 	}
 }
@@ -226,7 +228,7 @@ void sys_kill(int pid)
  */
 
 //
-// Lab6 TODO:
+// Lab6
 //
 // Modify it so that the task will disptach to different cpu runqueue
 // (please try to load balance, don't put all task into one cpu)
@@ -267,6 +269,11 @@ int sys_fork()
     setupvm(tasks[pid].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
 
 	}
+
+    static int rr = 0;
+    extern int ncpu;
+    runqueue_add_task(&cpus[rr % ncpu].cpu_rq, &tasks[pid]);
+    rr++;
 
 	/* Step 5 */
 	tasks[pid].tf.tf_regs.reg_eax = 0;
