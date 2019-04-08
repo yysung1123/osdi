@@ -16,6 +16,7 @@ enum {
   SYS_get_ticks,
   SYS_settextcolor,
   SYS_cls,
+    SYS_hlt,
 
 	NSYSCALLS
 };

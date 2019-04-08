@@ -116,6 +116,10 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
     sys_cls();
     break;
 
+  case SYS_hlt:
+    sys_hlt();
+    break;
+
 	}
 	return retVal;
 }
@@ -146,3 +150,7 @@ void syscall_init()
 
 }
 
+void sys_hlt()
+{
+    __asm __volatile("sti; hlt": : :"memory");
+}
