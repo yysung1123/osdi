@@ -9,6 +9,7 @@
 #include <kernel/mem.h>
 #include <kernel/kclock.h>
 #include <kernel/cpu.h>
+#include <kernel/spinlock.h>
 
 // These variables are set by i386_detect_memory()
 size_t                   npages;			// Amount of physical memory (in pages)
@@ -20,6 +21,9 @@ pde_t                    *kern_pgdir;		// Kernel's initial page directory
 struct PageInfo          *pages;		// Physical page state array
 static struct PageInfo   *page_free_list;	// Free list of physical pages
 size_t                   num_free_pages;
+static struct spinlock page_alloc_lock;
+static struct spinlock page_free_lock;
+static struct spinlock page_decref_lock;
 
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
@@ -229,6 +233,10 @@ mem_init(void)
 
 	// Some more checks, only possible after kern_pgdir is installed.
 	check_page_installed_pgdir();
+
+	spin_initlock(&page_alloc_lock);
+	spin_initlock(&page_free_lock);
+	spin_initlock(&page_decref_lock);
 }
 
 // Modify mappings in kern_pgdir to support SMP
@@ -334,10 +342,14 @@ page_alloc(int alloc_flags)
 {
     if (!page_free_list) return NULL;
 
+    spin_lock(&page_alloc_lock);
+
     struct PageInfo *pp = page_free_list;
     page_free_list = pp->pp_link;
     pp->pp_link = NULL;
     num_free_pages--;
+
+    spin_unlock(&page_alloc_lock);
 
     if (alloc_flags & ALLOC_ZERO) {
         memset(page2kva(pp), 0, PGSIZE);
@@ -358,9 +370,13 @@ page_free(struct PageInfo *pp)
 	// pp->pp_link is not NULL.
     if (pp->pp_ref != 0 || pp->pp_link) panic("page_free error");
 
+    spin_lock(&page_free_lock);
+
     pp->pp_link = page_free_list;
     page_free_list = pp;
     num_free_pages++;
+
+    spin_unlock(&page_free_lock);
 }
 
 //
@@ -370,7 +386,13 @@ page_free(struct PageInfo *pp)
 void
 page_decref(struct PageInfo* pp)
 {
-	if (--pp->pp_ref == 0)
+    spin_lock(&page_decref_lock);
+
+    --pp->pp_ref;
+
+    spin_unlock(&page_decref_lock);
+
+	if (pp->pp_ref == 0)
 		page_free(pp);
 }
 

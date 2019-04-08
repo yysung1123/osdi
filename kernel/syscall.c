@@ -2,17 +2,24 @@
 #include <kernel/timer.h>
 #include <kernel/mem.h>
 #include <kernel/cpu.h>
+#include <kernel/spinlock.h>
 #include <kernel/syscall.h>
 #include <kernel/trap.h>
 #include <inc/stdio.h>
 
+static struct spinlock puts_lock;
+
 void do_puts(char *str, uint32_t len)
 {
+    spin_lock(&puts_lock);
+
 	uint32_t i;
 	for (i = 0; i < len; i++)
 	{
 		k_putch(str[i]);
 	}
+
+    spin_unlock(&puts_lock);
 }
 
 int32_t do_getc()
@@ -135,6 +142,7 @@ void syscall_init()
    */
     extern void SYSCALL();
     register_handler(T_SYSCALL, syscall_handler, SYSCALL, 1, 3);
+    spin_initlock(&puts_lock);
 
 }
 
