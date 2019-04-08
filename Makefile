@@ -36,7 +36,7 @@ clean:
 	rm -rf $(OBJDIR)/user/*.asm
 
 qemu:
-	$(QEMU) -hda kernel.img -monitor stdio -smp $(CPUS)
+	$(QEMU) -enable-kvm -hda kernel.img -monitor stdio -smp $(CPUS)
 
 debug:
-	$(QEMU) -hda kernel.img -monitor stdio -s -S -smp $(CPUS)
+	$(QEMU) -enable-kvm -hda kernel.img -monitor stdio -s -S -smp $(CPUS)

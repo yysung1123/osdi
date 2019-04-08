@@ -6,6 +6,7 @@
 #include <kernel/task.h>
 #include <kernel/mem.h>
 #include <kernel/cpu.h>
+#include <kernel/spinlock.h>
 
 // Global descriptor table.
 //
@@ -51,7 +52,6 @@ struct Pseudodesc gdt_pd = {
 
 
 
-static struct tss_struct tss;
 Task tasks[NR_TASKS];
 
 extern char bootstack[];
@@ -66,7 +66,7 @@ uint32_t UDATA_SZ;
 uint32_t UBSS_SZ;
 uint32_t URODATA_SZ;
 
-Task *cur_task = NULL; //Current running task
+static struct spinlock task_create_lock;
 
 extern void sched_yield(void);
 
@@ -101,7 +101,10 @@ int task_create()
 	Task *ts = NULL;
 
 	/* Find a free task structure */
+    spin_lock(&task_create_lock);
+
     int pid;
+
     for (pid = 0; pid < NR_TASKS; pid++) {
         if (tasks[pid].state == TASK_FREE) {
             ts = &tasks[pid];
@@ -109,7 +112,14 @@ int task_create()
         }
     }
 
-    if (!ts) return -1;
+    if (!ts) {
+        spin_unlock(&task_create_lock);
+        return -1;
+    }
+
+    ts->state = TASK_RUNNABLE;
+
+    spin_unlock(&task_create_lock);
 
   /* Setup Page Directory and pages for kernel*/
   if (!(ts->pgdir = setupkvm()))
@@ -132,7 +142,7 @@ int task_create()
 
 	/* Setup task structure (task_id and parent_id) */
     ts->task_id = pid;
-    ts->state = TASK_RUNNABLE;
+    Task *cur_task = thiscpu->cpu_task;
     ts->parent_id = (cur_task ? cur_task->task_id : 0);
     ts->remind_ticks = TIME_QUANT;
 
@@ -231,6 +241,7 @@ int sys_fork()
     if (pid == -1) return -1;
 
     /* Step 2: Copy the trap frame of the parent to the child */
+    Task *cur_task = thiscpu->cpu_task;
     tasks[pid].tf = cur_task->tf;
 
     /* Step 3: Copy the content of the old stack to the new one */
@@ -283,9 +294,11 @@ void task_init()
 
 	}
 	task_init_percpu();
+
+	spin_initlock(&task_create_lock);
 }
 
-// Lab6 TODO
+// Lab6
 //
 // Please modify this function to:
 //
@@ -305,31 +318,39 @@ void task_init_percpu()
 	int i;
 	extern int user_entry();
 	extern int idle_entry();
+	struct CpuInfo *cpu = thiscpu;
+	int cpu_id = cpu->cpu_id;
 	
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
-	memset(&(tss), 0, sizeof(tss));
-	tss.ts_esp0 = (uint32_t)bootstack + KSTKSIZE;
-	tss.ts_ss0 = GD_KD;
+	struct tss_struct *tss = &cpu->cpu_tss;
+	memset(tss, 0, sizeof(struct tss_struct));
+	tss->ts_esp0 = (uint32_t)KSTACKTOP - cpu_id * (KSTKSIZE + KSTKGAP);
+	tss->ts_ss0 = GD_KD;
 
 	// fs and gs stay in user data segment
-	tss.ts_fs = GD_UD | 0x03;
-	tss.ts_gs = GD_UD | 0x03;
+	tss->ts_fs = GD_UD | 0x03;
+	tss->ts_gs = GD_UD | 0x03;
 
 	/* Setup TSS in GDT */
-	gdt[GD_TSS0 >> 3] = SEG16(STS_T32A, (uint32_t)(&tss), sizeof(struct tss_struct), 0);
-	gdt[GD_TSS0 >> 3].sd_s = 0;
+	gdt[(GD_TSS0 >> 3) + cpu_id] = SEG16(STS_T32A, (uint32_t)(tss), sizeof(struct tss_struct), 0);
+	gdt[(GD_TSS0 >> 3) + cpu_id].sd_s = 0;
 
 	/* Setup first task */
 	i = task_create();
-	cur_task = &(tasks[i]);
+    cpu->cpu_task = &tasks[i];
 
 	/* For user program */
-	setupvm(cur_task->pgdir, (uint32_t)UTEXT_start, UTEXT_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)UDATA_start, UDATA_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)UBSS_start, UBSS_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)URODATA_start, URODATA_SZ);
-	cur_task->tf.tf_eip = (uint32_t)user_entry;
+    setupvm(tasks[i].pgdir, (uint32_t)UTEXT_start, UTEXT_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)UDATA_start, UDATA_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)UBSS_start, UBSS_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
+
+    if (cpu == bootcpu) {
+        tasks[i].tf.tf_eip = (uint32_t)user_entry;
+    } else {
+        tasks[i].tf.tf_eip = (uint32_t)idle_entry;
+    }
 
 	/* Load GDT&LDT */
 	lgdt(&gdt_pd);
@@ -338,7 +359,43 @@ void task_init_percpu()
 	lldt(0);
 
 	// Load the TSS selector 
-	ltr(GD_TSS0);
+    ltr(GD_TSS0 + (cpu_id << 3));
 
-	cur_task->state = TASK_RUNNING;
+    tasks[i].state = TASK_RUNNING;
+
+    /* Init per-CPU runqueue */
+    spin_initlock(&cpu->cpu_rq.lock);
+    cpu->cpu_rq.cur_task = 0;
+    cpu->cpu_rq.tasks[0] = &tasks[i];
+    cpu->cpu_rq.task_num = 1;
+}
+
+
+void runqueue_add_task(struct Runqueue *rq, struct Task *task)
+{
+    spin_lock(&rq->lock);
+
+    rq->tasks[rq->task_num++] = task;
+
+    spin_unlock(&rq->lock);
+}
+
+void runqueue_remove_task(struct Runqueue *rq, int pid)
+{
+    spin_lock(&rq->lock);
+
+    bool removed = false;
+    for (int i = 0; i < rq->task_num; ++i) {
+        if (removed) {
+            rq->tasks[i - 1] = rq->tasks[i];
+            rq->tasks[i] = NULL;
+        } else if (rq->tasks[i]->task_id == pid) {
+            removed = true;
+            rq->tasks[i] = NULL;
+        }
+    }
+
+    rq->task_num--;
+
+    spin_unlock(&rq->lock);
 }

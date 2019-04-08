@@ -3,7 +3,8 @@
 
 #include <inc/trap.h>
 #include <kernel/mem.h>
-#define NR_TASKS	10
+#include <kernel/spinlock.h>
+#define NR_TASKS	64
 #define TIME_QUANT	100
 
 typedef enum
@@ -18,7 +19,7 @@ typedef enum
 // Each task's user space
 #define USR_STACK_SIZE	(40960)
 
-typedef struct
+typedef struct Task
 {
 	int task_id;
 	int parent_id;
@@ -29,7 +30,7 @@ typedef struct
 	
 } Task;
 
-// TODO Lab6
+// Lab6
 // 
 // Design your Runqueue structure for cpu
 // your runqueue sould have at least two
@@ -39,11 +40,16 @@ typedef struct
 //
 // 2. a list indicate the tasks in the runqueue
 //
-typedef struct
+typedef struct Runqueue
 {
-
+    int cur_task;
+    Task *tasks[NR_TASKS];
+    int task_num;
+    struct spinlock lock;
 } Runqueue;
 
+void runqueue_add_task(struct Runqueue *rq, struct Task *task);
+void runqueue_remove_task(struct Runqueue *rq, int pid);
 
 void task_init();
 void task_init_percpu();

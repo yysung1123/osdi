@@ -20,7 +20,7 @@ void set_timer(int hz)
 
 /* It is timer interrupt handler */
 //
-// TODO: Lab6
+// Lab6
 // Modify your timer_handler to support Multi processor
 // Don't forget to acknowledge the interrupt using lapic_eoi()
 //
@@ -28,14 +28,15 @@ void timer_handler(struct Trapframe *tf)
 {
   extern void sched_yield();
   int i;
+    lapic_eoi();
+    struct CpuInfo *cpu = thiscpu;
 
-  jiffies++;
+    if (cpu->cpu_id == 0) {
+        jiffies++;
+    }
 
-  extern Task tasks[];
 
-  extern Task *cur_task;
-
-    if (cur_task != NULL)
+    if (cpu->cpu_task != NULL)
     {
     /*
     * 1. Maintain the status of slept tasks
@@ -47,18 +48,19 @@ void timer_handler(struct Trapframe *tf)
     * 4. sched_yield() if the time is up for current task
     *
     */
-        for (int pid = 0; pid < NR_TASKS; pid++) {
-            if (tasks[pid].state == TASK_SLEEP) {
-                if (--tasks[pid].remind_ticks == 0) {
-                    tasks[pid].state = TASK_RUNNABLE;
-                    tasks[pid].remind_ticks = TIME_QUANT;
+        struct Runqueue* rq = &cpu->cpu_rq;
+        for (int i = 0; i < rq->task_num; ++i) {
+            if (rq->tasks[i]->state == TASK_SLEEP) {
+                if (--rq->tasks[i]->remind_ticks == 0) {
+                    rq->tasks[i]->state = TASK_RUNNABLE;
+                    rq->tasks[i]->remind_ticks = TIME_QUANT;
                 }
             }
         }
 
-        if (--cur_task->remind_ticks == 0) {
-            cur_task->state = TASK_RUNNABLE;
-            cur_task->remind_ticks = TIME_QUANT;
+        if (--cpu->cpu_task->remind_ticks == 0) {
+            cpu->cpu_task->state = TASK_RUNNABLE;
+            cpu->cpu_task->remind_ticks = TIME_QUANT;
             sched_yield();
         }
     }

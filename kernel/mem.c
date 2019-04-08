@@ -251,8 +251,12 @@ mem_init_mp(void)
 	//             it will fault rather than overwrite another CPU's stack.
 	//             Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
-	// TODO:
+	//
 	// Lab6: Your code here:
+    for (int i = 0; i < NCPU; ++i) {
+        uintptr_t  kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+        boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), (PTE_W | PTE_P));
+    }
 
 }
 
@@ -289,7 +293,7 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	
-	/* Lab6  TODO:
+	/* Lab6
 	 * 
 	 * modify your implementation to avoid adding the page at
 	 * MPENTRY_PADDR to the free list, so that we can safely
@@ -300,7 +304,8 @@ page_init(void)
     for (size_t i = 0; i < npages; i++) {
         if ((i == 0) ||
             (IOPHYSMEM / PGSIZE <= i && i < EXTPHYSMEM / PGSIZE) ||
-            (PADDR(kernel_load_addr) / PGSIZE <= i && i < PADDR(nextfree) / PGSIZE)) {
+            (PADDR(kernel_load_addr) / PGSIZE <= i && i < PADDR(nextfree) / PGSIZE) ||
+            (i == MPENTRY_PADDR / PGSIZE)) {
             pages[i].pp_ref = 1;
             pages[i].pp_link = NULL;
         } else {
@@ -582,11 +587,17 @@ mmio_map_region(physaddr_t pa, size_t size)
 	//
 	// Hint: The TA solution uses boot_map_region.
 	//
-	// Lab6 TODO
+	// Lab6
 	// Your code here:
-	
+    size = ROUNDUP(size, PGSIZE);
+    if (base + size >= MMIOLIM) {
+        panic("MMIO memory overflow");
+    }
 
-	panic("mmio_map_region not implemented");
+    boot_map_region(kern_pgdir, base, size, pa, (PTE_PCD | PTE_PWT | PTE_W));
+    void *va = (void *)base;
+    base += size;
+    return va;
 }
 
 /* This is a simple wrapper function for mapping user program */
@@ -603,7 +614,7 @@ setupvm(pde_t *pgdir, uint32_t start, uint32_t size)
  * You should map the kernel part memory with appropriate permission
  * Return a pointer to newly created page directory
  *
- * TODO: Lab6
+ * Lab6
  * You should also map:
  * 1. per-CPU kernel stack
  * 2. MMIO region for local apic
@@ -618,9 +629,17 @@ setupkvm()
     }
 
     pde_t *pgdir = page2kva(pp);
-    boot_map_region(pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), (PTE_W | PTE_P));
     boot_map_region(pgdir, KERNBASE, ROUNDUP((0xffffffff - KERNBASE), PGSIZE), 0, (PTE_W | PTE_P));
     boot_map_region(pgdir, IOPHYSMEM, ROUNDUP((EXTPHYSMEM - IOPHYSMEM), PGSIZE), IOPHYSMEM, (PTE_W | PTE_P));
+    for (int i = 0; i < NCPU; ++i) {
+        uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+        boot_map_region(pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), (PTE_W | PTE_P));
+    }
+
+    for (uintptr_t va = MMIOBASE; va < MMIOLIM; va += PGSIZE) {
+        *pgdir_walk(pgdir, va, 1) = *pgdir_walk(kern_pgdir, va, 0);
+    }
+
     return pgdir;
 }
 
