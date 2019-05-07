@@ -67,6 +67,7 @@ uint32_t UBSS_SZ;
 uint32_t URODATA_SZ;
 
 static struct spinlock task_create_lock;
+static struct spinlock sys_fork_lock;
 
 extern void sched_yield(void);
 
@@ -270,10 +271,15 @@ int sys_fork()
 
 	}
 
-    static int rr = 0;
+    static uint32_t rr = 0;
     extern int ncpu;
-    runqueue_add_task(&cpus[rr % ncpu].cpu_rq, &tasks[pid]);
-    rr++;
+    spin_lock(&sys_fork_lock);
+
+    if (++rr == ncpu) rr = 0;
+
+    spin_unlock(&sys_fork_lock);
+
+    runqueue_add_task(&cpus[rr].cpu_rq, &tasks[pid]);
 
 	/* Step 5 */
 	tasks[pid].tf.tf_regs.reg_eax = 0;
@@ -303,6 +309,7 @@ void task_init()
 	task_init_percpu();
 
 	spin_initlock(&task_create_lock);
+	spin_initlock(&sys_fork_lock);
 }
 
 // Lab6
