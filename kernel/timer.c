@@ -72,10 +72,10 @@ unsigned long sys_get_ticks()
 }
 void timer_init()
 {
-  set_timer(TIME_HZ);
-
-  /* Enable interrupt */
-  irq_setmask_8259A(irq_mask_8259A & ~(1<<IRQ_TIMER));
+  /*
+   * We don't enable timer interrupt here
+   * Instead, we use lapic timer
+   */
 
   /* Register trap handler */
   extern void TIM_ISR();
