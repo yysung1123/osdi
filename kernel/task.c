@@ -6,6 +6,7 @@
 #include <kernel/task.h>
 #include <kernel/mem.h>
 #include <kernel/cpu.h>
+#include <kernel/spinlock.h>
 
 // Global descriptor table.
 //
@@ -51,7 +52,6 @@ struct Pseudodesc gdt_pd = {
 
 
 
-static struct tss_struct tss;
 Task tasks[NR_TASKS];
 
 extern char bootstack[];
@@ -66,12 +66,13 @@ uint32_t UDATA_SZ;
 uint32_t UBSS_SZ;
 uint32_t URODATA_SZ;
 
-Task *cur_task = NULL; //Current running task
+static struct spinlock task_create_lock;
+static struct spinlock sys_fork_lock;
 
 extern void sched_yield(void);
 
 
-/* TODO: Lab5
+/*
  * 1. Find a free task structure for the new task,
  *    the global task list is in the array "tasks".
  *    You should find task that is in the state "TASK_FREE"
@@ -101,12 +102,35 @@ int task_create()
 	Task *ts = NULL;
 
 	/* Find a free task structure */
+    spin_lock(&task_create_lock);
+
+    int pid;
+
+    for (pid = 0; pid < NR_TASKS; pid++) {
+        if (tasks[pid].state == TASK_FREE) {
+            ts = &tasks[pid];
+            break;
+        }
+    }
+
+    if (!ts) {
+        spin_unlock(&task_create_lock);
+        return -1;
+    }
+
+    ts->state = TASK_RUNNABLE;
+
+    spin_unlock(&task_create_lock);
 
   /* Setup Page Directory and pages for kernel*/
   if (!(ts->pgdir = setupkvm()))
     panic("Not enough memory for per process page directory!\n");
 
   /* Setup User Stack */
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        struct PageInfo *pp = page_alloc(0);
+        page_insert(ts->pgdir, pp, USTACKTOP - USR_STACK_SIZE + i, (PTE_U | PTE_W | PTE_P));
+    }
 
 	/* Setup Trapframe */
 	memset( &(ts->tf), 0, sizeof(ts->tf));
@@ -118,10 +142,16 @@ int task_create()
 	ts->tf.tf_esp = USTACKTOP-PGSIZE;
 
 	/* Setup task structure (task_id and parent_id) */
+    ts->task_id = pid;
+    Task *cur_task = thiscpu->cpu_task;
+    ts->parent_id = (cur_task ? cur_task->task_id : 0);
+    ts->remind_ticks = TIME_QUANT;
+
+    return pid;
 }
 
 
-/* TODO: Lab5
+/*
  * This function free the memory allocated by kernel.
  *
  * 1. Be sure to change the page directory to kernel's page
@@ -142,9 +172,15 @@ int task_create()
 
 static void task_free(int pid)
 {
+        lcr3(PADDR(kern_pgdir));
+        for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+            page_remove(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i);
+        }
+        ptable_remove(tasks[pid].pgdir);
+        pgdir_remove(tasks[pid].pgdir);
 }
 
-// Lab6 TODO
+// Lab6
 //
 // Modify it so that the task will be removed form cpu runqueue
 // ( we not implement signal yet so do not try to kill process
@@ -154,15 +190,20 @@ void sys_kill(int pid)
 {
 	if (pid > 0 && pid < NR_TASKS)
 	{
-	/* TODO: Lab 5
+	/*
    * Remember to change the state of tasks
    * Free the memory
    * and invoke the scheduler for yield
    */
+        runqueue_remove_task(&thiscpu->cpu_rq, pid);
+        tasks[pid].state = TASK_FREE;
+        task_free(pid);
+        thiscpu->cpu_rq.cur_task = 0;
+        sched_yield();
 	}
 }
 
-/* TODO: Lab 5
+/*
  * In this function, you have several things todo
  *
  * 1. Use task_create() to create an empty task, return -1
@@ -188,7 +229,7 @@ void sys_kill(int pid)
  */
 
 //
-// Lab6 TODO:
+// Lab6
 //
 // Modify it so that the task will disptach to different cpu runqueue
 // (please try to load balance, don't put all task into one cpu)
@@ -197,6 +238,29 @@ int sys_fork()
 {
   /* pid for newly created process */
   int pid;
+
+    /* Step 1: Use task_create() to create an empty task */
+    pid = task_create();
+    if (pid == -1) return -1;
+
+    /* Step 2: Copy the trap frame of the parent to the child */
+    Task *cur_task = thiscpu->cpu_task;
+    tasks[pid].tf = cur_task->tf;
+
+    /* Step 3: Copy the content of the old stack to the new one */
+    extern pde_t *kern_pgdir;
+    lcr3(PADDR(kern_pgdir));
+
+    extern struct PageInfo* page_lookup();
+    extern void* page2kva();
+    for (int i = 0; i < USR_STACK_SIZE; i += PGSIZE) {
+        kernaddr_t *src = page2kva(page_lookup(tasks[pid].pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        kernaddr_t *dest = page2kva(page_lookup(cur_task->pgdir, USTACKTOP - USR_STACK_SIZE + i, NULL));
+        memcpy(src, dest, PGSIZE);
+    }
+
+    lcr3(PADDR(cur_task->pgdir));
+
 	if ((uint32_t)cur_task)
 	{
     /* Step 4: All user program use the same code for now */
@@ -206,9 +270,23 @@ int sys_fork()
     setupvm(tasks[pid].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
 
 	}
+
+    static uint32_t rr = 0;
+    extern int ncpu;
+    spin_lock(&sys_fork_lock);
+
+    if (++rr == ncpu) rr = 0;
+
+    spin_unlock(&sys_fork_lock);
+
+    runqueue_add_task(&cpus[rr].cpu_rq, &tasks[pid]);
+
+	/* Step 5 */
+	tasks[pid].tf.tf_regs.reg_eax = 0;
+	return pid;
 }
 
-/* TODO: Lab5
+/*
  * We've done the initialization for you,
  * please make sure you understand the code.
  */
@@ -229,9 +307,12 @@ void task_init()
 
 	}
 	task_init_percpu();
+
+	spin_initlock(&task_create_lock);
+	spin_initlock(&sys_fork_lock);
 }
 
-// Lab6 TODO
+// Lab6
 //
 // Please modify this function to:
 //
@@ -251,31 +332,39 @@ void task_init_percpu()
 	int i;
 	extern int user_entry();
 	extern int idle_entry();
+	struct CpuInfo *cpu = thiscpu;
+	int cpu_id = cpu->cpu_id;
 	
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
-	memset(&(tss), 0, sizeof(tss));
-	tss.ts_esp0 = (uint32_t)bootstack + KSTKSIZE;
-	tss.ts_ss0 = GD_KD;
+	struct tss_struct *tss = &cpu->cpu_tss;
+	memset(tss, 0, sizeof(struct tss_struct));
+	tss->ts_esp0 = (uint32_t)KSTACKTOP - cpu_id * (KSTKSIZE + KSTKGAP);
+	tss->ts_ss0 = GD_KD;
 
 	// fs and gs stay in user data segment
-	tss.ts_fs = GD_UD | 0x03;
-	tss.ts_gs = GD_UD | 0x03;
+	tss->ts_fs = GD_UD | 0x03;
+	tss->ts_gs = GD_UD | 0x03;
 
 	/* Setup TSS in GDT */
-	gdt[GD_TSS0 >> 3] = SEG16(STS_T32A, (uint32_t)(&tss), sizeof(struct tss_struct), 0);
-	gdt[GD_TSS0 >> 3].sd_s = 0;
+	gdt[(GD_TSS0 >> 3) + cpu_id] = SEG16(STS_T32A, (uint32_t)(tss), sizeof(struct tss_struct), 0);
+	gdt[(GD_TSS0 >> 3) + cpu_id].sd_s = 0;
 
 	/* Setup first task */
 	i = task_create();
-	cur_task = &(tasks[i]);
+    cpu->cpu_task = &tasks[i];
 
 	/* For user program */
-	setupvm(cur_task->pgdir, (uint32_t)UTEXT_start, UTEXT_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)UDATA_start, UDATA_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)UBSS_start, UBSS_SZ);
-	setupvm(cur_task->pgdir, (uint32_t)URODATA_start, URODATA_SZ);
-	cur_task->tf.tf_eip = (uint32_t)user_entry;
+    setupvm(tasks[i].pgdir, (uint32_t)UTEXT_start, UTEXT_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)UDATA_start, UDATA_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)UBSS_start, UBSS_SZ);
+    setupvm(tasks[i].pgdir, (uint32_t)URODATA_start, URODATA_SZ);
+
+    if (cpu == bootcpu) {
+        tasks[i].tf.tf_eip = (uint32_t)user_entry;
+    } else {
+        tasks[i].tf.tf_eip = (uint32_t)idle_entry;
+    }
 
 	/* Load GDT&LDT */
 	lgdt(&gdt_pd);
@@ -284,7 +373,43 @@ void task_init_percpu()
 	lldt(0);
 
 	// Load the TSS selector 
-	ltr(GD_TSS0);
+    ltr(GD_TSS0 + (cpu_id << 3));
 
-	cur_task->state = TASK_RUNNING;
+    tasks[i].state = TASK_RUNNING;
+
+    /* Init per-CPU runqueue */
+    spin_initlock(&cpu->cpu_rq.lock);
+    cpu->cpu_rq.cur_task = 0;
+    cpu->cpu_rq.tasks[0] = &tasks[i];
+    cpu->cpu_rq.task_num = 1;
+}
+
+
+void runqueue_add_task(struct Runqueue *rq, struct Task *task)
+{
+    spin_lock(&rq->lock);
+
+    rq->tasks[rq->task_num++] = task;
+
+    spin_unlock(&rq->lock);
+}
+
+void runqueue_remove_task(struct Runqueue *rq, int pid)
+{
+    spin_lock(&rq->lock);
+
+    bool removed = false;
+    for (int i = 0; i < rq->task_num; ++i) {
+        if (removed) {
+            rq->tasks[i - 1] = rq->tasks[i];
+            rq->tasks[i] = NULL;
+        } else if (rq->tasks[i]->task_id == pid) {
+            removed = true;
+            rq->tasks[i] = NULL;
+        }
+    }
+
+    rq->task_num--;
+
+    spin_unlock(&rq->lock);
 }

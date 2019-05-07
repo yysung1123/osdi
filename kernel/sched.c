@@ -5,7 +5,7 @@
 #define ctx_switch(ts) \
   do { env_pop_tf(&((ts)->tf)); } while(0)
 
-/* TODO: Lab5
+/*
 * Implement a simple round-robin scheduler (Start with the next one)
 *
 * 1. You have to remember the task you picked last time.
@@ -22,7 +22,7 @@
 */
 
 //
-// TODO: Lab6
+// Lab6
 // Modify your Round-robin scheduler to fit the multi-core
 // You should:
 //
@@ -42,6 +42,25 @@
 //
 void sched_yield(void)
 {
-	extern Task tasks[];
-	extern Task *cur_task;
+    struct Runqueue *rq = &thiscpu->cpu_rq;
+    spin_lock(&rq->lock);
+
+    int cur_idx = rq->cur_task;
+    int next_idx = cur_idx;
+	do {
+	    next_idx = (next_idx + 1) % rq->task_num;
+    } while ((next_idx == 0 || rq->tasks[next_idx]->state != TASK_RUNNABLE) &&
+             next_idx != cur_idx);
+
+    spin_unlock(&rq->lock);
+
+    // no tasks are runnable, choose idle task
+    if (next_idx == cur_idx) next_idx = 0;
+
+    rq->cur_task = next_idx;
+    Task *cur_task = thiscpu->cpu_task = rq->tasks[rq->cur_task];
+    cur_task->state = TASK_RUNNING;
+
+    lcr3(PADDR(cur_task->pgdir));
+    ctx_switch(cur_task);
 }

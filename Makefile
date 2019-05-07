@@ -5,8 +5,9 @@ LD	=ld
 OBJCOPY = objcopy
 OBJDUMP = objdump
 NM = nm
+QEMU = qemu-system-i386
 
-CFLAGS = -m32 -Wall -O -fstrength-reduce -fomit-frame-pointer -finline-functions -nostdinc -fno-builtin 
+CFLAGS = -m32 -Wall -O -fstrength-reduce -finline-functions -nostdinc -fno-builtin -fno-stack-protector
 
 # Add debug symbol
 CFLAGS += -g
@@ -15,8 +16,9 @@ CFLAGS += -I.
 
 OBJDIR = .
 
-
 CPUS ?= 1
+
+LDFLAGS= -m elf_i386
 
 all: boot/boot kernel/system
 	dd if=/dev/zero of=$(OBJDIR)/kernel.img count=10000 2>/dev/null
@@ -36,7 +38,7 @@ clean:
 	rm -rf $(OBJDIR)/kernel/drv/*.o
 
 qemu:
-	qemu-system-i386 -hda kernel.img -hdb lab7.img -monitor stdio -smp $(CPUS)
+	$(QEMU) -enable-kvm -hda kernel.img -hdb lab7.img -monitor stdio -smp $(CPUS)
 
 debug:
-	qemu-system-i386 -hda kernel.img -hdb lab7.img -monitor stdio -s -S -smp $(CPUS)
+	$(QEMU) -enable-kvm -hda kernel.img -hdb lab7.img -monitor stdio -s -S -smp $(CPUS)

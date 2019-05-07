@@ -29,5 +29,7 @@ int idle_entry()
     :: "i" (0x20 | 0x03)
   );
 
-  for(;;){};
+  for(;;){
+    hlt();
+  }
 }
