@@ -1064,12 +1064,12 @@ check_page(void)
 	mm1 = (uintptr_t) mmio_map_region(0, 4097);
 	mm2 = (uintptr_t) mmio_map_region(0, 4096);
 	// check that they're in the right region
-	assert(mm1 >= MMIOBASE && mm1 + 8096 < MMIOLIM);
-	assert(mm2 >= MMIOBASE && mm2 + 8096 < MMIOLIM);
+	assert(mm1 >= MMIOBASE && mm1 + 8192 < MMIOLIM);
+	assert(mm2 >= MMIOBASE && mm2 + 4096 < MMIOLIM);
 	// check that they're page-aligned
 	assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
 	// check that they don't overlap
-	assert(mm1 + 8096 <= mm2);
+	assert(mm1 + 8192 <= mm2);
 	// check page mappings
 	assert(check_va2pa(kern_pgdir, mm1) == 0);
 	assert(check_va2pa(kern_pgdir, mm1+PGSIZE) == PGSIZE);
