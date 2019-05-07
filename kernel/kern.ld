@@ -24,7 +24,7 @@ PROVIDE(stext = .);
   lib/syscall.o (.text)
   user/shell.o (.text)
   user/main.o (.text)
-  /usr/lib/gcc/x86_64-pc-linux-gnu/8.2.1/32/libgcc.a (.*)
+  /usr/lib/gcc/x86_64-pc-linux-gnu/8.3.0/32/libgcc.a (.*)
   PROVIDE(UTEXT_end = .);
   *(.text .stub .text.* .gnu.linkonce.t.*)
 }
@@ -47,23 +47,6 @@ PROVIDE(URODATA_end = .);
 }
 PROVIDE(rdata_end = .);
 
-/* Include debugging information in kernel memory */
-.stab : {
-  PROVIDE(__STAB_BEGIN__ = .);
-  *(.stab);
-  PROVIDE(__STAB_END__ = .);
-  BYTE(0)		/* Force the linker to allocate space
-  for this section */
-}
-
-.stabstr : {
-  PROVIDE(__STABSTR_BEGIN__ = .);
-  *(.stabstr);
-  PROVIDE(__STABSTR_END__ = .);
-  BYTE(0)		/* Force the linker to allocate space
-  for this section */
-}
-
 /* Adjust the address for the data segment to the next page */
 . = ALIGN(0x1000);
 
@@ -83,6 +66,24 @@ PROVIDE(UDATA_end = .);
   *(.data)
   *(.data.rel.local)
 }
+
+/* Include debugging information in kernel memory */
+.stab : {
+  PROVIDE(__STAB_BEGIN__ = .);
+  *(.stab);
+  PROVIDE(__STAB_END__ = .);
+  BYTE(0)		/* Force the linker to allocate space
+  for this section */
+}
+
+.stabstr : {
+  PROVIDE(__STABSTR_BEGIN__ = .);
+  *(.stabstr);
+  PROVIDE(__STABSTR_END__ = .);
+  BYTE(0)		/* Force the linker to allocate space
+  for this section */
+}
+
 PROVIDE(bss_start = .);
 .bss : {
 PROVIDE(UBSS_start = .);
