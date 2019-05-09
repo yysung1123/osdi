@@ -196,8 +196,8 @@ void sys_kill(int pid)
    * and invoke the scheduler for yield
    */
         runqueue_remove_task(&thiscpu->cpu_rq, pid);
-        tasks[pid].state = TASK_FREE;
         task_free(pid);
+        tasks[pid].state = TASK_FREE;
         thiscpu->cpu_rq.cur_task = 0;
         sched_yield();
 	}
