@@ -7,7 +7,7 @@ OBJDUMP = objdump
 NM = nm
 QEMU = qemu-system-i386
 
-CFLAGS = -m32 -Wall -O -fstrength-reduce -finline-functions -nostdinc -fno-builtin -fno-stack-protector
+CFLAGS = -m32 -Wall -nostdinc -fno-builtin -fno-stack-protector
 
 # Add debug symbol
 CFLAGS += -g
