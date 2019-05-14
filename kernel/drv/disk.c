@@ -349,6 +349,7 @@ unsigned char ide_ata_access(unsigned char direction, unsigned char drive, unsig
 				if (err = ide_polling(channel, 1))
 					return err; // Polling, set error and exit if there is.
 				asm("rep insw" : : "c"(words), "d"(bus), "D"(edi)); // Receive Data.
+				edi += SECTOR_SIZE;
 			} 
 		}
 		else 
