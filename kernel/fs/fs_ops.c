@@ -5,10 +5,27 @@
 #include <fs.h>
 #include <fat/ff.h>
 #include <diskio.h>
+#include <inc/assert.h>
 
 extern struct fs_dev fat_fs;
 
-/*TODO: Lab7, fat level file operator.
+int fresult_to_posix(int fresult) {
+    int ret;
+    switch (fresult) {
+    case FR_OK:
+        ret = STATUS_OK;
+        break;
+    case FR_NO_FILE:
+        ret = STATUS_ENOENT;
+        break;
+    case FR_EXIST:
+        ret = STATUS_EEXIST;
+        break;
+    }
+    return ret;
+}
+
+/*  Lab7, fat level file operator.
  *       Implement below functions to support basic file system operators by using the elmfat's API(f_xxx).
  *       Reference: http://elm-chan.org/fsw/ff/00index_e.html (or under doc directory (doc/00index_e.html))
  *
@@ -47,13 +64,13 @@ extern struct fs_dev fat_fs;
 */
 int fat_mount(struct fs_dev *fs, const void* data)
 {
-
+    return f_mount(fs->data, fs->path, 1);
 }
 
 /* Note: Just call f_mkfs at root path '/' */
 int fat_mkfs(const char* device_name)
 {
-
+    return f_mkfs("/", 0, 0);
 }
 
 /* Note: Convert the POSIX's open flag to elmfat's flag.
@@ -62,24 +79,65 @@ int fat_mkfs(const char* device_name)
 */
 int fat_open(struct fs_fd* file)
 {
+    BYTE mode = 0;
+    if (file->flags == O_RDONLY) {
+        mode |= FA_READ;
+    }
+    if (file->flags & O_WRONLY) {
+        mode |= FA_WRITE;
+    }
+    if (file->flags & O_RDWR) {
+        mode |= FA_READ | FA_WRITE;
+    }
+    if (file->flags & O_CREAT) {
+        mode |= FA_CREATE_NEW;
+    }
+    if (file->flags & O_APPEND) {
+        mode |= FA_OPEN_ALWAYS;
+    }
+    if (file->flags & O_TRUNC) {
+        mode &= ~FA_CREATE_NEW;
+        mode |= FA_CREATE_ALWAYS;
+    }
+    if (file->flags & (O_EXCL | O_DIRECTORY)) {
+        panic("Not implemented");
+    }
+
+    int fret = f_open((FIL *)file->data, file->path, mode);
+    if (fret == RES_OK && file->flags & O_APPEND) {
+        fret = f_lseek((FIL *)file->data, f_size((FIL *)file->data));
+    }
+
+    return -fresult_to_posix(fret);
 }
 
 int fat_close(struct fs_fd* file)
 {
-
+    return f_close((FIL *)file->data);
 }
 int fat_read(struct fs_fd* file, void* buf, size_t count)
 {
-
+    int ret;
+    int fret = f_read((FIL *)file->data, buf, count, &ret);
+    if (fret > 0) return -fresult_to_posix(fret);
+    return ret;
 }
 int fat_write(struct fs_fd* file, const void* buf, size_t count)
 {
+    int ret;
+    int fret = f_write((FIL *)file->data, buf, count, &ret);
+    if (fret > 0) return -fresult_to_posix(fret);
+    return ret;
 }
 int fat_lseek(struct fs_fd* file, off_t offset)
 {
+    int fret = f_lseek((FIL *)file->data, offset);
+    return -fresult_to_posix(fret);
 }
 int fat_unlink(struct fs_fd* file, const char *pathname)
 {
+    int fret = f_unlink(pathname);
+    return -fresult_to_posix(fret);
 }
 
 struct fs_ops elmfat_ops = {
