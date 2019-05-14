@@ -412,7 +412,7 @@ int fs_seek_test(int argc, char **argv)
     if ((fd = open("test2.txt", O_RDWR, 0)) >= 0)
     {
         offset = lseek(fd, 10, SEEK_END); //seek to file end + 10 bytes
-        cprintf("File offset =%d\n");
+        cprintf("File offset =%d\n", offset);
         ret = write(fd, &(buf[10]), 10);
         offset = lseek(fd, 0, SEEK_SET); //seek to file begin
 
