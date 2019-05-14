@@ -86,3 +86,5 @@ page2kva(struct PageInfo *pp)
 }
 
 #endif
+
+int access_ok(const void *va);

@@ -1115,3 +1115,9 @@ check_page_installed_pgdir(void)
 
 	printk("check_page_installed_pgdir() succeeded!\n");
 }
+
+int access_ok(const void *va) {
+    pte_t *pte = pgdir_walk(thiscpu->cpu_task->pgdir, va, 0);
+    if (pte == NULL) return 0;
+    return *pte & PTE_U;
+}
