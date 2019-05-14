@@ -5,8 +5,9 @@
 #include <inc/stdio.h>
 #include <inc/syscall.h>
 #include <fs.h>
+#include <fat/ff.h>
 
-/*TODO: Lab7, file I/O system call interface.*/
+/*Lab7, file I/O system call interface.*/
 /*Note: Here you need handle the file system call from user.
  *       1. When user open a new file, you can use the fd_new() to alloc a file object(struct fs_fd)
  *       2. When user R/W or seek the file, use the fd_get() to get file object.
@@ -49,31 +50,76 @@
 int sys_open(const char *file, int flags, int mode)
 {
     //We dont care the mode.
-/* TODO */
+    int fd = fd_new();
+    if (fd < 0) return -STATUS_ENOSPC;
+
+    extern struct fs_fd fd_table[];
+    int ret = file_open(&(fd_table[fd]), file, flags);
+    if (ret < 0) {
+        fd_put(&(fd_table[fd]));
+        return ret;
+    }
+
+    return fd;
 }
 
 int sys_close(int fd)
 {
-/* TODO */
+    if (fd >= FS_FD_MAX) return -STATUS_EINVAL;
+
+    extern struct fs_fd fd_table[];
+    int ret = file_close(&(fd_table[fd]));
+    fd_put(&(fd_table[fd]));
+    return ret;
 }
 int sys_read(int fd, void *buf, size_t len)
 {
-/* TODO */
+    struct fs_fd* file = fd_get(fd);
+    if (file == NULL) return -STATUS_EBADF;
+
+    int ret = file_read(file, buf, len);
+    fd_put(file);
+    return ret;
 }
 int sys_write(int fd, const void *buf, size_t len)
 {
-/* TODO */
+    if (len > 2147483647) return -STATUS_EINVAL;
+
+    struct fs_fd* file = fd_get(fd);
+    if (file == NULL) return -STATUS_EBADF;
+
+    int ret = file_write(file, buf, len);
+    fd_put(file);
+    return ret;
 }
 
-/* Note: Check the whence parameter and calcuate the new offset value before do file_seek() */
+/* Note: Check the whence parameter and calcuate the new offset value before do file_lseek() */
 off_t sys_lseek(int fd, off_t offset, int whence)
 {
-/* TODO */
+    struct fs_fd* file = fd_get(fd);
+    if (file == NULL) return -STATUS_EBADF;
+
+    off_t pos = f_tell((FIL *)file->data), size = f_size((FIL *)file->data);
+    switch (whence) {
+    case SEEK_SET:
+        offset = 0;
+        break;
+    case SEEK_CUR:
+        offset += pos;
+        break;
+    case SEEK_END:
+        offset += size;
+        break;
+    }
+
+    file_lseek(file, offset);
+    fd_put(file);
+    return offset;
 }
 
 int sys_unlink(const char *pathname)
 {
-/* TODO */ 
+    return file_unlink(pathname);
 }
 
 
