@@ -139,6 +139,18 @@ int fat_unlink(struct fs_fd* file, const char *pathname)
     int fret = f_unlink(pathname);
     return -fresult_to_posix(fret);
 }
+int fat_readdir(DIR *dp, FILINFO *fno) {
+    int fret = f_readdir(dp, fno);
+    return -fresult_to_posix(fret);
+}
+int fat_opendir(DIR *dp, const char *pathname) {
+    int fret = f_opendir(dp, pathname);
+    return -fresult_to_posix(fret);
+}
+int fat_closedir(DIR *dp) {
+    int fret = f_closedir(dp);
+    return -fresult_to_posix(fret);
+}
 
 struct fs_ops elmfat_ops = {
     .dev_name = "elmfat",
@@ -149,7 +161,10 @@ struct fs_ops elmfat_ops = {
     .read = fat_read,
     .write = fat_write,
     .lseek = fat_lseek,
-    .unlink = fat_unlink
+    .unlink = fat_unlink,
+    .readdir = fat_readdir,
+    .opendir = fat_opendir,
+    .closedir = fat_closedir
 };
 
 

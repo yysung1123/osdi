@@ -133,6 +133,15 @@ int file_unlink(const char *path)
 {
     return fat_fs.ops->unlink(NULL, path);
 }
+int file_readdir(DIR *dp, FILINFO *fno) {
+    return fat_fs.ops->readdir(dp, fno);
+}
+int file_opendir(DIR *dp, const char *path) {
+    return fat_fs.ops->opendir(dp, path);
+}
+int file_closedir(DIR *dp) {
+    return fat_fs.ops->closedir(dp);
+}
 
 
 /**

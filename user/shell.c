@@ -27,6 +27,9 @@ int filetest3(int argc, char **argv);
 int filetest4(int argc, char **argv);
 int filetest5(int argc, char **argv);
 int spinlocktest(int argc, char **argv);
+int ls(int argc, char **argv);
+int touch(int argc, char **argv);
+int rm(int argc, char **argv);
 
 
 struct Command commands[] = {
@@ -42,7 +45,10 @@ struct Command commands[] = {
   { "filetest3", "Laqrge block test", filetest3},
   { "filetest4", "Error test", filetest4},
   { "filetest5", "unlink test", filetest5},
-  { "spinlocktest", "Test spinlock", spinlocktest }
+  { "spinlocktest", "Test spinlock", spinlocktest },
+  { "ls", "List", ls },
+  { "touch", "Touch", touch },
+  { "rm", "Remove", rm }
 };
 const int NCOMMANDS = (sizeof(commands)/sizeof(commands[0]));
 
@@ -528,6 +534,63 @@ int fs_speed_test(int argc, char **argv)
         /* close file */
         close(fd);
     }
+}
+
+char file_type(int attr) {
+    if (attr & 0x10) return 'd';
+    return 'f';
+}
+
+int ls(int argc, char **argv) {
+    if (argc < 2) {
+        return 0;
+    }
+
+    DIR dp;
+    FILINFO fno;
+    int res;
+
+    res = opendir(&dp, argv[1]);
+    if (res != 0) {
+        cprintf("File or path not exist.\n");
+        return 0;
+    }
+
+    for (;;) {
+        res = readdir(&dp, &fno);
+        if (res != 0 || fno.fname[0] == 0) break;
+        cprintf("%c\t%d\t%s\n", file_type(fno.fattrib), fno.fsize, fno.fname);
+    }
+
+    closedir(&dp);
+
+    return 0;
+}
+
+int rm(int argc, char **argv) {
+    if (argc < 2) {
+        return 0;
+    }
+
+    int res = unlink(argv[1]);
+    if (res != 0) {
+        cprintf("Cannot remove [%s]\n", argv[1]);
+    }
+    return 0;
+}
+
+int touch(int argc, char **argv) {
+    if (argc < 2) {
+        return 0;
+    }
+
+    int fd = open(argv[1], O_APPEND, 0);
+    if (fd < 0) {
+        return 0;
+    }
+
+    close(fd);
+    return 0;
 }
 
 void shell()

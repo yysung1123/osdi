@@ -122,6 +122,21 @@ int sys_unlink(const char *pathname)
     return file_unlink(pathname);
 }
 
+int sys_readdir(DIR *dp, FILINFO *fno)
+{
+    return file_readdir(dp, fno);
+}
+
+int sys_opendir(DIR *dp, const char *pathname)
+{
+    return file_opendir(dp, pathname);
+}
+
+int sys_closedir(DIR *dp)
+{
+    return file_closedir(dp);
+}
+
 
               
 
