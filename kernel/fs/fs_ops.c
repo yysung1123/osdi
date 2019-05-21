@@ -25,6 +25,11 @@ int fresult_to_posix(int fresult) {
     return ret;
 }
 
+void updateinfo(struct fs_fd *file) {
+    file->pos = f_tell((FIL *)file->data);
+    file->size = f_size((FIL *)file->data);
+}
+
 /*  Lab7, fat level file operator.
  *       Implement below functions to support basic file system operators by using the elmfat's API(f_xxx).
  *       Reference: http://elm-chan.org/fsw/ff/00index_e.html (or under doc directory (doc/00index_e.html))
@@ -108,6 +113,10 @@ int fat_open(struct fs_fd* file)
         fret = f_lseek((FIL *)file->data, f_size((FIL *)file->data));
     }
 
+    if (fret == RES_OK) {
+        updateinfo(file);
+    }
+
     return -fresult_to_posix(fret);
 }
 
@@ -120,6 +129,8 @@ int fat_read(struct fs_fd* file, void* buf, size_t count)
     int ret;
     int fret = f_read((FIL *)file->data, buf, count, &ret);
     if (fret > 0) return -fresult_to_posix(fret);
+
+    updateinfo(file);
     return ret;
 }
 int fat_write(struct fs_fd* file, const void* buf, size_t count)
@@ -127,11 +138,14 @@ int fat_write(struct fs_fd* file, const void* buf, size_t count)
     int ret;
     int fret = f_write((FIL *)file->data, buf, count, &ret);
     if (fret > 0) return -fresult_to_posix(fret);
+
+    updateinfo(file);
     return ret;
 }
 int fat_lseek(struct fs_fd* file, off_t offset)
 {
     int fret = f_lseek((FIL *)file->data, offset);
+    updateinfo(file);
     return -fresult_to_posix(fret);
 }
 int fat_unlink(struct fs_fd* file, const char *pathname)

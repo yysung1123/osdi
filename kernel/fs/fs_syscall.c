@@ -99,16 +99,15 @@ off_t sys_lseek(int fd, off_t offset, int whence)
     struct fs_fd* file = fd_get(fd);
     if (file == NULL) return -STATUS_EBADF;
 
-    off_t pos = f_tell((FIL *)file->data), size = f_size((FIL *)file->data);
     switch (whence) {
     case SEEK_SET:
         offset = 0;
         break;
     case SEEK_CUR:
-        offset += pos;
+        offset += file->pos;
         break;
     case SEEK_END:
-        offset += size;
+        offset += file->size;
         break;
     }
 
