@@ -142,6 +142,9 @@ int file_opendir(DIR *dp, const char *path) {
 int file_closedir(DIR *dp) {
     return fat_fs.ops->closedir(dp);
 }
+int file_stat(const char *path, FILINFO *fno) {
+    return fat_fs.ops->stat(path, fno);
+}
 
 
 /**

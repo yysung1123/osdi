@@ -58,6 +58,7 @@ struct fs_ops
     int (*readdir)  (DIR* dp, FILINFO* fno);
     int (*opendir)  (DIR* dp, const char* pathname);
     int (*closedir) (DIR *dp);
+    int (*stat) (const char* pathname, FILINFO* fno);
 
 };
 
@@ -75,6 +76,7 @@ int file_unlink(const char *path);
 int file_readdir(DIR *dp, FILINFO *fno);
 int file_opendir(DIR *dp, const char *path);
 int file_closedir(DIR *dp);
+int file_stat(const char *path, FILINFO *fno);
 
 struct fs_fd* fd_get(int fd);
 void fd_put(struct fs_fd* fd);

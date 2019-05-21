@@ -165,6 +165,10 @@ int fat_closedir(DIR *dp) {
     int fret = f_closedir(dp);
     return -fresult_to_posix(fret);
 }
+int fat_stat(const char *pathname, FILINFO *fno) {
+    int fret = f_stat(pathname, fno);
+    return -fresult_to_posix(fret);
+}
 
 struct fs_ops elmfat_ops = {
     .dev_name = "elmfat",
@@ -178,7 +182,8 @@ struct fs_ops elmfat_ops = {
     .unlink = fat_unlink,
     .readdir = fat_readdir,
     .opendir = fat_opendir,
-    .closedir = fat_closedir
+    .closedir = fat_closedir,
+    .stat = fat_stat
 };
 
 

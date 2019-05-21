@@ -136,6 +136,10 @@ int sys_closedir(DIR *dp)
     return file_closedir(dp);
 }
 
+int sys_stat(const char *pathname, FILINFO *fno) {
+    return file_stat(pathname, fno);
+}
+
 
               
 

@@ -58,6 +58,7 @@ SYSCALL_1ARG(unlink, int, const char *)
 SYSCALL_2ARG(readdir, int, DIR *, FILINFO *)
 SYSCALL_2ARG(opendir, int, DIR *, const char *)
 SYSCALL_1ARG(closedir, int, DIR *)
+SYSCALL_2ARG(stat, int, const char *, FILINFO *)
 /////////////////////////////
 SYSCALL_NOARG(getc, int)
 SYSCALL_NOARG(getcid, int32_t)

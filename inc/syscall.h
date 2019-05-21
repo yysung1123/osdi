@@ -26,6 +26,7 @@ enum {
   SYS_readdir,
   SYS_opendir,
   SYS_closedir,
+  SYS_stat,
   SYS_hlt,
   NSYSCALLS
 };

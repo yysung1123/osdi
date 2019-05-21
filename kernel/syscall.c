@@ -147,6 +147,9 @@ int32_t do_syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, ui
   case SYS_closedir:
     retVal = sys_closedir(a1);
     break;
+  case SYS_stat:
+    retVal = sys_stat(a1, a2);
+    break;
   }
 	return retVal;
 }

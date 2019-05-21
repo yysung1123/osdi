@@ -550,6 +550,12 @@ int ls(int argc, char **argv) {
     FILINFO fno;
     int res;
 
+    res = stat(argv[1], &fno);
+    if (res == 0) {
+        cprintf("%c\t%d\t%s\n", file_type(fno.fattrib), fno.fsize, fno.fname);
+        return 0;
+    }
+
     res = opendir(&dp, argv[1]);
     if (res != 0) {
         cprintf("File or path not exist.\n");
